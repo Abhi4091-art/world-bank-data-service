@@ -134,13 +134,13 @@ class TestCovidImpact:
     def test_unemployment_recovery_inverted(self):
         """For unemployment, 'recovered' means the value went DOWN (lower = better)."""
         df = _make_df([
-            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2018", "obs_value": 5.0},
-            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2019", "obs_value": 5.0},
-            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2020", "obs_value": 8.0},
-            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2023", "obs_value": 4.0},
         ])
         result = analyse_covid_impact(df)
@@ -190,9 +190,9 @@ class TestRankAndNormalise:
     def test_unemployment_ranking_inverted(self):
         """For unemployment, lower value = rank 1 (better)."""
         df = _make_df([
-            {"ref_area": "AAA", "ref_area_name": "A", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "AAA", "ref_area_name": "A", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2020", "obs_value": 2.0},
-            {"ref_area": "BBB", "ref_area_name": "B", "indicator_id": "SL.UEM.TOTL.ZS",
+            {"ref_area": "BBB", "ref_area_name": "B", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2020", "obs_value": 8.0},
         ])
         result = rank_and_normalise(df)

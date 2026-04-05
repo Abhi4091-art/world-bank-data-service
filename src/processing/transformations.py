@@ -106,7 +106,7 @@ def analyse_covid_impact(
     result["recovered"] = result["recovery_value"] >= result["baseline_avg"]
 
     # For unemployment-type indicators (unit is %), lower is better
-    unemployment_mask = result["indicator_id"] == "SL.UEM.TOTL.ZS"
+    unemployment_mask = result["indicator_id"] == "WB_WDI_SL_UEM_TOTL_ZS"
     result.loc[unemployment_mask, "recovered"] = (
         result.loc[unemployment_mask, "recovery_value"]
         <= result.loc[unemployment_mask, "baseline_avg"]
@@ -132,7 +132,7 @@ def rank_and_normalise(df: pd.DataFrame) -> pd.DataFrame:
     # --- Ranking ---
     # For unemployment, lower = better, so we rank ascending.
     # For everything else, higher = better, so we rank descending.
-    unemployment_mask = df["indicator_id"] == "SL.UEM.TOTL.ZS"
+    unemployment_mask = df["indicator_id"] == "WB_WDI_SL_UEM_TOTL_ZS"
 
     # Default: rank descending (highest value = rank 1)
     df["rank"] = df.groupby(["indicator_id", "time_period"])["obs_value"].rank(

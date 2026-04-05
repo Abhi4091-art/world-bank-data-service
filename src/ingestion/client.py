@@ -42,7 +42,8 @@ class Data360Client:
     def fetch_indicators(self) -> list[RawRecord]:
         """Fetch all configured indicators for the configured countries / years.
 
-        Returns a flat list of observation records.
+        Returns a flat list of observation records, normalised to lowercase keys
+        with consistent field names for downstream processing.
         """
         if self._settings.use_sample_data:
             return self._load_sample_data()
@@ -52,8 +53,15 @@ class Data360Client:
         for indicator in self._settings.indicators:
             logger.info("Fetching indicator %s …", indicator)
             records = self._fetch_with_retry(indicator)
-            all_records.extend(records)
-            logger.info("  → received %d records", len(records))
+            normalised = [self._normalise_record(r) for r in records]
+            # Filter to configured time periods (done client-side because
+            # the API returns HTTP 417 with many TIME_PERIOD values)
+            filtered = [
+                r for r in normalised
+                if r["time_period"] in self._settings.time_periods
+            ]
+            all_records.extend(filtered)
+            logger.info("  → received %d records", len(normalised))
 
         logger.info("Total records fetched: %d", len(all_records))
         return all_records
@@ -63,17 +71,38 @@ class Data360Client:
     # ------------------------------------------------------------------
 
     def _build_url(self, indicator: str) -> str:
+        """Build the API URL with uppercase parameter names as required by Data360.
+        
+        Note: TIME_PERIOD filtering is done post-fetch because the API
+        returns HTTP 417 when too many periods are requested at once.
+        """
         params = {
-            "database_id": self._settings.database_id,
-            "indicator": indicator,
-            "ref_area": ";".join(self._settings.countries),
-            "time_period": ";".join(self._settings.time_periods),
+            "DATABASE_ID": self._settings.database_id,
+            "INDICATOR": indicator,
+            "REF_AREA": ",".join(self._settings.countries),
         }
         query = "&".join(f"{k}={v}" for k, v in params.items())
         return f"{self._settings.api_base_url}/data360/data?{query}"
 
-    def _fetch_with_retry(self, indicator: str) -> list[RawRecord]:
-        """GET with exponential back-off."""
+    @staticmethod
+    def _normalise_record(raw: dict) -> RawRecord:
+        """Convert the API's uppercase field names to the lowercase format
+        used by our processing layer, and cast OBS_VALUE to float."""
+        return {
+            "database_id": raw.get("DATABASE_ID", ""),
+            "indicator_id": raw.get("INDICATOR", ""),
+            "indicator_name": raw.get("COMMENT_TS", ""),
+            "ref_area": raw.get("REF_AREA", ""),
+            "ref_area_name": raw.get("REF_AREA", ""),  # API doesn't return full name
+            "time_period": raw.get("TIME_PERIOD", ""),
+            "obs_value": float(raw.get("OBS_VALUE", 0)),
+            "unit_measure": raw.get("UNIT_MEASURE", ""),
+            "freq": raw.get("FREQ", ""),
+        }
+
+    def _fetch_with_retry(self, indicator: str) -> list[dict]:
+        """GET with exponential back-off. Extracts the 'value' list from
+        the API's {count, value} response wrapper."""
         url = self._build_url(indicator)
         last_error: Exception | None = None
 
@@ -85,11 +114,15 @@ class Data360Client:
                 resp.raise_for_status()
                 data = resp.json()
 
-                if not isinstance(data, list):
+                # API returns {"count": N, "value": [...]}
+                if isinstance(data, dict) and "value" in data:
+                    return data["value"]
+                elif isinstance(data, list):
+                    return data
+                else:
                     raise Data360ClientError(
-                        f"Unexpected response type: {type(data).__name__}"
+                        f"Unexpected response structure: {list(data.keys()) if isinstance(data, dict) else type(data).__name__}"
                     )
-                return data
 
             except requests.exceptions.Timeout as exc:
                 last_error = exc

@@ -22,9 +22,9 @@ class Settings:
     # Data query defaults
     database_id: str = "WB_WDI"
     indicators: list[str] = field(default_factory=lambda: [
-        "SP.POP.TOTL",
-        "NY.GDP.PCAP.CD",
-        "SL.UEM.TOTL.ZS",
+        "WB_WDI_SP_POP_TOTL",
+        "WB_WDI_NY_GDP_PCAP_CD",
+        "WB_WDI_SL_UEM_TOTL_ZS",
     ])
     countries: list[str] = field(default_factory=lambda: [
         "GBR", "USA", "DEU", "FRA", "JPN",
