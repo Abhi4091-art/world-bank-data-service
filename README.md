@@ -42,6 +42,13 @@ Fetches data from the Data360 API for three indicators across five G7 economies
 The API client includes retry logic with exponential back-off and can fall back
 to a bundled sample-data file for offline or CI use.
 
+> **Why sample data exists:** During development it became apparent that the
+> Data360 API returns HTTP 417 when too many `TIME_PERIOD` values are passed as
+> query parameters. To work around this, time period filtering is done
+> client-side after fetching. The sample data file exists so the pipeline can
+> be run and tested without hitting the API at all — useful for CI, offline
+> development, or when the API is unavailable.
+
 ### 2. Transformations
 
 **Year-over-year growth rates** — For each country and indicator, computes the
