@@ -33,6 +33,11 @@ class Settings:
         "2018", "2019", "2020", "2021", "2022", "2023",
     ])
 
+    # Indicators where a lower value is better (e.g. unemployment).
+    # Used by transformations to invert ranking and recovery logic.
+    lower_is_better_indicators: list[str] = field(default_factory=lambda: [
+        "WB_WDI_SL_UEM_TOTL_ZS",
+    ])
     # Paths
     output_dir: str = "output"
     sample_data_path: str = "data/samples/sample_response.json"
@@ -56,4 +61,8 @@ class Settings:
             output_dir=os.getenv("DATA360_OUTPUT_DIR", defaults.output_dir),
             sample_data_path=os.getenv("DATA360_SAMPLE_DATA_PATH", defaults.sample_data_path),
             use_sample_data=os.getenv("DATA360_USE_SAMPLE_DATA", "false").lower() == "true",
+            lower_is_better_indicators=os.getenv(
+                "DATA360_LOWER_IS_BETTER",
+                ";".join(defaults.lower_is_better_indicators)
+            ).split(";"),
         )

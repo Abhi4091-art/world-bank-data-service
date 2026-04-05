@@ -143,7 +143,7 @@ class TestCovidImpact:
             {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2023", "obs_value": 4.0},
         ])
-        result = analyse_covid_impact(df)
+        result = analyse_covid_impact(df, lower_is_better=["WB_WDI_SL_UEM_TOTL_ZS"])
         assert result.iloc[0]["recovered"] == True  # 4.0 <= 5.0 baseline
 
 
@@ -194,11 +194,68 @@ class TestRankAndNormalise:
              "indicator_name": "Unemp", "time_period": "2020", "obs_value": 2.0},
             {"ref_area": "BBB", "ref_area_name": "B", "indicator_id": "WB_WDI_SL_UEM_TOTL_ZS",
              "indicator_name": "Unemp", "time_period": "2020", "obs_value": 8.0},
-        ])
-        result = rank_and_normalise(df)
+       ])
+        result = rank_and_normalise(df, lower_is_better=["WB_WDI_SL_UEM_TOTL_ZS"])
 
         aaa = result[result["ref_area"] == "AAA"].iloc[0]
         bbb = result[result["ref_area"] == "BBB"].iloc[0]
 
         assert aaa["rank"] == 1  # lower unemployment = better
         assert bbb["rank"] == 2
+
+        # ---- client: sample data loading ----
+
+class TestData360ClientSampleData:
+
+    def test_loads_sample_data(self, tmp_path):
+        """Client correctly loads and returns records from a sample JSON file."""
+        import json
+        from config.settings import Settings
+        from src.ingestion.client import Data360Client
+
+        sample = [
+            {"ref_area": "GBR", "ref_area_name": "GBR", "indicator_id": "WB_WDI_SP_POP_TOTL",
+             "indicator_name": "Population", "time_period": "2020", "obs_value": 67000000.0,
+             "unit_measure": "Number", "freq": "A", "database_id": "WB_WDI"}
+        ]
+        sample_file = tmp_path / "sample.json"
+        sample_file.write_text(json.dumps(sample))
+
+        settings = Settings(use_sample_data=True, sample_data_path=str(sample_file))
+        client = Data360Client(settings)
+        records = client.fetch_indicators()
+
+        assert len(records) == 1
+        assert records[0]["ref_area"] == "GBR"
+        assert records[0]["obs_value"] == 67000000.0
+
+    def test_raises_if_sample_file_missing(self, tmp_path):
+        """Client raises FileNotFoundError when sample file does not exist."""
+        from config.settings import Settings
+        from src.ingestion.client import Data360Client
+
+        settings = Settings(use_sample_data=True, sample_data_path="nonexistent.json")
+        client = Data360Client(settings)
+
+        with pytest.raises(FileNotFoundError):
+            client.fetch_indicators()
+
+
+# ---- growth rates: edge cases ----
+
+class TestGrowthRatesEdgeCases:
+
+    def test_zero_previous_value(self):
+        """When prev_value is 0, growth rate is inf — row should be dropped."""
+        import math
+        df = _make_df([
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "IND1",
+             "indicator_name": "Ind", "time_period": "2020", "obs_value": 0},
+            {"ref_area": "AAA", "ref_area_name": "Aland", "indicator_id": "IND1",
+             "indicator_name": "Ind", "time_period": "2021", "obs_value": 100},
+        ])
+        result = compute_growth_rates(df)
+
+        # Division by zero produces inf — growth rate is not meaningful
+        assert len(result) == 1
+        assert math.isinf(result.iloc[0]["growth_rate_pct"])

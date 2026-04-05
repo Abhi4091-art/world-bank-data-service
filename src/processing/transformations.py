@@ -54,6 +54,7 @@ def compute_growth_rates(df: pd.DataFrame) -> pd.DataFrame:
 
 def analyse_covid_impact(
     df: pd.DataFrame,
+    lower_is_better: list[str] | None = None,
     baseline_years: tuple[int, int] = (2018, 2019),
     shock_year: int = 2020,
     recovery_year: int = 2023,
@@ -103,13 +104,13 @@ def analyse_covid_impact(
 
     # "Recovered" means the recovery-year value has returned to or exceeded the
     # baseline. For unemployment (where lower = better), we invert the check.
+    lower_is_better = lower_is_better or []
     result["recovered"] = result["recovery_value"] >= result["baseline_avg"]
 
-    # For unemployment-type indicators (unit is %), lower is better
-    unemployment_mask = result["indicator_id"] == "WB_WDI_SL_UEM_TOTL_ZS"
-    result.loc[unemployment_mask, "recovered"] = (
-        result.loc[unemployment_mask, "recovery_value"]
-        <= result.loc[unemployment_mask, "baseline_avg"]
+    lower_mask = result["indicator_id"].isin(lower_is_better)
+    result.loc[lower_mask, "recovered"] = (
+        result.loc[lower_mask, "recovery_value"]
+        <= result.loc[lower_mask, "baseline_avg"]
     )
 
     return result
@@ -119,7 +120,10 @@ def analyse_covid_impact(
 # 3. Country ranking & normalisation
 # ------------------------------------------------------------------
 
-def rank_and_normalise(df: pd.DataFrame) -> pd.DataFrame:
+def rank_and_normalise(
+    df: pd.DataFrame,
+    lower_is_better: list[str] | None = None,
+) -> pd.DataFrame:
     """For each (indicator, year), rank countries and apply min-max
     normalisation to produce a 0–100 score.
 
@@ -132,19 +136,20 @@ def rank_and_normalise(df: pd.DataFrame) -> pd.DataFrame:
     # --- Ranking ---
     # For unemployment, lower = better, so we rank ascending.
     # For everything else, higher = better, so we rank descending.
-    unemployment_mask = df["indicator_id"] == "WB_WDI_SL_UEM_TOTL_ZS"
+    lower_is_better = lower_is_better or []
+    lower_mask = df["indicator_id"].isin(lower_is_better)
 
     # Default: rank descending (highest value = rank 1)
     df["rank"] = df.groupby(["indicator_id", "time_period"])["obs_value"].rank(
         ascending=False, method="min"
     ).astype(int)
 
-    # Override for unemployment: rank ascending (lowest value = rank 1)
-    if unemployment_mask.any():
-        unemp_ranks = df.loc[unemployment_mask].groupby(
+    # Override for "lower is better" indicators: rank ascending (lowest value = rank 1)
+    if lower_mask.any():
+        lower_ranks = df.loc[lower_mask].groupby(
             ["indicator_id", "time_period"]
         )["obs_value"].rank(ascending=True, method="min").astype(int)
-        df.loc[unemployment_mask, "rank"] = unemp_ranks
+        df.loc[lower_mask, "rank"] = lower_ranks
 
     # --- Min-max normalisation ---
     group_min = df.groupby(["indicator_id", "time_period"])["obs_value"].transform("min")

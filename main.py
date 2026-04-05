@@ -56,14 +56,12 @@ def main() -> int:
     settings = Settings.from_env()
 
     # CLI flags override env/config
+    from dataclasses import replace
+
     if args.sample:
-        settings = Settings(
-            **{**settings.__dict__, "use_sample_data": True}
-        )
+     settings = replace(settings, use_sample_data=True)
     if args.output_dir:
-        settings = Settings(
-            **{**settings.__dict__, "output_dir": args.output_dir}
-        )
+     settings = replace(settings, output_dir=args.output_dir)
 
     # ---- 1. Ingest ----
     logger.info("Starting data ingestion …")
@@ -89,10 +87,10 @@ def main() -> int:
     growth_rates = compute_growth_rates(df)
     logger.info("  Growth rates:    %d rows", len(growth_rates))
 
-    covid_impact = analyse_covid_impact(df)
+    covid_impact = analyse_covid_impact(df, lower_is_better=settings.lower_is_better_indicators)
     logger.info("  COVID impact:    %d rows", len(covid_impact))
 
-    rankings = rank_and_normalise(df)
+    rankings = rank_and_normalise(df, lower_is_better=settings.lower_is_better_indicators)
     logger.info("  Rankings:        %d rows", len(rankings))
 
     # ---- 3. Output ----
