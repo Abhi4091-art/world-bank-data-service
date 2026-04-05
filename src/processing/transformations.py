@@ -160,4 +160,4 @@ def rank_and_normalise(df: pd.DataFrame) -> pd.DataFrame:
             "ref_area", "ref_area_name", "indicator_id", "indicator_name",
             "time_period", "obs_value", "rank", "normalised_score",
         ]
-    ].reset_index(drop=True)
+    ].reset_index(drop=True) 

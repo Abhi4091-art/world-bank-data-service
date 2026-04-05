@@ -9,7 +9,7 @@ venv/
 .env
 
 # Output
-output/
+/output/
 
 # IDE
 .idea/
